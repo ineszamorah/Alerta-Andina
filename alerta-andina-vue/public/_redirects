@@ -1,0 +1,8 @@
+# Reglas de Netlify (se copian a dist/ al compilar).
+# Hacen de intermediario para dos servicios que el navegador no puede
+# leer directamente por CORS, igual que vite-api.js en local:
+#   /api/noticias?q=...            -> RSS de Google News
+#   /api/lugar?lat=..&lon=..&zoom= -> OpenStreetMap (Nominatim)
+# El 200 significa "reescritura": la URL no cambia para el navegador.
+/api/noticias  q=:q  https://news.google.com/rss/search?q=:q&hl=es-419&gl=PE&ceid=PE:es-419  200
+/api/lugar  lat=:lat lon=:lon zoom=:zoom  https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=es&lat=:lat&lon=:lon&zoom=:zoom  200

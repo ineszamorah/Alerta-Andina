@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Alerta Andina</title>
+  <meta name="description" content="Alertas sísmicas personalizadas para Perú y la región andina." />
+  <meta name="theme-color" content="#0E2166" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Alerta Andina" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/leaflet.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ===================== ONBOARDING ===================== -->
+  <!-- 4 pasos; cada paso con una acción real propia (permiso de
+       notificaciones, elegir zona) y su "ahora no" para saltar solo
+       ese paso — no solo un "Saltar" genérico al final. -->
+  <section class="onboarding" id="onboarding" hidden>
+    <div class="onboarding-slides" id="onboarding-slides">
+
+      <!-- Paso 1: bienvenida -->
+      <div class="onboarding-slide">
+        <img class="onboarding-logo" src="icons/logo-alerta-andina.svg" alt="Alerta Andina" width="182" height="90" />
+        <h2>Te damos la bienvenida</h2>
+        <p>Sismos recientes en Perú y la región andina, con datos públicos y abiertos de USGS y EMSC.</p>
+      </div>
+
+      <!-- Paso 2: notificaciones (acción real) -->
+      <div class="onboarding-slide onboarding-slide--action">
+        <div class="icon-big">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h2>Activa las notificaciones</h2>
+        <p>Te avisamos con una notificación nativa del navegador si entra un sismo nuevo mientras tienes la app abierta.</p>
+        <div class="onboarding-card">
+          <div class="onboarding-card-info">
+            <strong>Notificaciones</strong>
+            <span>Solo mientras la app está abierta</span>
+          </div>
+          <span class="onboarding-status-chip" id="onboarding-notif-status">Pendiente</span>
+        </div>
+      </div>
+
+      <!-- Paso 3: zona (acción real) -->
+      <div class="onboarding-slide onboarding-slide--action">
+        <div class="icon-big">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/></svg>
+        </div>
+        <h2>Elige tu zona</h2>
+        <p>Define qué sismos quieres ver primero. Puedes cambiarlo después en Ajustes.</p>
+        <div class="onboarding-zone-picker" id="onboarding-zone-picker">
+          <button class="chip selected" data-zona="peru">Perú</button>
+          <button class="chip" data-zona="andina">Región andina</button>
+          <button class="chip" data-zona="mundo">Todo el mundo</button>
+        </div>
+      </div>
+
+      <!-- Paso 4: instalar (informativo) -->
+      <div class="onboarding-slide">
+        <div class="icon-big">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z" stroke="currentColor" stroke-width="2"/></svg>
+        </div>
+        <h2>Instálala en tu pantalla de inicio</h2>
+        <p>Es opcional: queda con su propio ícono, como una app más, sin pasar por ninguna tienda.</p>
+        <div class="onboarding-note">
+          También incluye "Mi Plan": tu mochila de emergencia, a quién avisar y un modo SOS con silbato y voz.
+        </div>
+      </div>
+
+    </div>
+    <div class="onboarding-dots" id="onboarding-dots">
+      <span class="active"></span><span></span><span></span><span></span>
+    </div>
+    <div class="onboarding-footer">
+      <button class="btn btn-primario" id="btn-onboarding-siguiente">Permitir notificaciones</button>
+      <button class="btn btn-texto" id="btn-onboarding-saltar">Ahora no</button>
+    </div>
+  </section>
+
+  <!-- ===================== APP ===================== -->
+  <div class="app" id="app">
+
+    <!-- Sidebar: solo visible en escritorio (>=900px). En móvil la
+         navegación vive en el bottom-nav de siempre; aquí se
+         reutilizan las mismas clases/data-view, así que la lógica
+         de navegación en JS no necesita cambios: actúa igual sobre
+         cualquier .nav-item que exista en la página. -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a class="logo-link" href="#alertas" aria-label="Alerta Andina, ir al inicio">
+          <img src="icons/logo-alerta-andina.svg" alt="Alerta Andina" width="91" height="45" />
+        </a>
+      </div>
+      <nav class="sidebar-nav" aria-label="Navegación">
+        <button class="nav-item active" data-view="alertas">
+          <span class="nav-icono"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12h4l3 8 4-16 3 8h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="nav-label">Alertas</span>
+        </button>
+        <button class="nav-item" data-view="plan">
+          <span class="nav-icono"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="nav-label">Mi Plan</span>
+        </button>
+        <button class="nav-item" data-view="ajustes">
+          <span class="nav-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.67 4.14a2.34 2.34 0 0 1 4.66 0 2.34 2.34 0 0 0 3.32 1.91 2.34 2.34 0 0 1 2.33 4.04 2.34 2.34 0 0 0 0 3.82 2.34 2.34 0 0 1-2.33 4.04 2.34 2.34 0 0 0-3.32 1.91 2.34 2.34 0 0 1-4.66 0 2.34 2.34 0 0 0-3.32-1.91 2.34 2.34 0 0 1-2.33-4.04 2.34 2.34 0 0 0 0-3.82 2.34 2.34 0 0 1 2.33-4.04 2.34 2.34 0 0 0 3.32-1.91z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          <span class="nav-label">Ajustes</span>
+        </button>
+      </nav>
+      <div class="sidebar-pie">
+        <button class="sidebar-sos" type="button" data-abrir-emergencia aria-label="Abrir modo emergencia">
+          <span class="sos-circulo">SOS</span>
+          <span class="nav-label">Emergencia</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-content">
+    <header class="app-header">
+      <div class="logo"><a class="logo-link" href="#alertas" aria-label="Alerta Andina, ir al inicio"><img src="icons/logo-alerta-andina.svg" alt="Alerta Andina" height="34" /></a></div>
+      <div class="header-status">
+        <span>Vigilando</span>
+        <span class="tag-en-vivo"><span class="status-dot"></span>En vivo</span>
+      </div>
+    </header>
+
+    <!-- ---------- VISTA: ALERTAS (Home) ---------- -->
+    <!-- En escritorio (>=900px) alertas-desktop-grid pasa a dos
+         columnas: la lista y un mapa inline, visibles a la vez, sin
+         tener que cambiar de pestaña — patrón tomado de la app de
+         referencia consultada en el research (lista + mapa juntos). -->
+    <main class="view" id="view-alertas" data-view="alertas">
+     <div class="alertas-desktop-grid">
+      <!-- Inicio en Vue: hero, filtros y listas (src/components/PantallaInicio.vue) -->
+      <div class="alertas-list-col" id="app-inicio"></div>
+
+      <div class="alertas-map-col">
+        <div class="bloque-vigilando">
+          <span class="bv-estado">Vigilando</span>
+          <span class="tag-en-vivo"><span class="status-dot"></span>En vivo</span>
+          <button class="bv-instalar" id="btn-instalar-sidebar" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Instalar app
+          </button>
+        </div>
+        <div id="mapa-leaflet-inline"></div>
+        <div class="map-legend">
+        <span class="map-legend-titulo">Escala de magnitud</span>
+        <div class="map-legend-items">
+          <span class="item" data-nivel="leve"><span class="mag-ring mag-ring--mini" style="--pct:25"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Leve</strong><small>&lt; 3.5</small></span></span>
+          <span class="item" data-nivel="moderado"><span class="mag-ring mag-ring--mini" style="--pct:50"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Moderado</strong><small>3.5 – 4.4</small></span></span>
+          <span class="item" data-nivel="alto"><span class="mag-ring mag-ring--mini" style="--pct:75"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Alto</strong><small>4.5 – 5.4</small></span></span>
+          <span class="item" data-nivel="critico"><span class="mag-ring mag-ring--mini" style="--pct:100"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Crítico</strong><small>5.5 o más</small></span></span>
+        </div>
+      </div>
+      </div>
+     </div><!-- /.alertas-desktop-grid -->
+    </main>
+
+    <!-- ---------- VISTA: MAPA ---------- -->
+    <main class="view" id="view-mapa" data-view="mapa" hidden>
+      <div class="section-title"><span>Mapa de actividad sísmica</span></div>
+      <div id="mapa-leaflet"></div>
+      <div class="map-legend">
+        <span class="map-legend-titulo">Escala de magnitud</span>
+        <div class="map-legend-items">
+          <span class="item" data-nivel="leve"><span class="mag-ring mag-ring--mini" style="--pct:25"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Leve</strong><small>&lt; 3.5</small></span></span>
+          <span class="item" data-nivel="moderado"><span class="mag-ring mag-ring--mini" style="--pct:50"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Moderado</strong><small>3.5 – 4.4</small></span></span>
+          <span class="item" data-nivel="alto"><span class="mag-ring mag-ring--mini" style="--pct:75"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Alto</strong><small>4.5 – 5.4</small></span></span>
+          <span class="item" data-nivel="critico"><span class="mag-ring mag-ring--mini" style="--pct:100"><span class="mag-ring-centro"></span></span><span class="item-texto"><strong>Crítico</strong><small>5.5 o más</small></span></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- ---------- VISTA: AJUSTES ---------- -->
+    <main class="view" id="view-ajustes" data-view="ajustes" hidden>
+      <div class="section-title"><span>Ajustes</span></div>
+      <div class="settings-grid">
+
+        <div class="settings-card">
+          <h3>Umbral de magnitud</h3>
+          <p class="nota" style="margin-bottom:12px;">Solo te alertaremos de sismos iguales o mayores a este valor.</p>
+          <div class="range-row">
+            <input type="range" id="umbral-range" min="2" max="7" step="0.1" value="4.0" />
+            <span class="range-value" id="umbral-valor">4.0</span>
+          </div>
+          <p class="nota" id="umbral-nota" style="margin-top:10px; font-size:0.75rem;">Los sismos pequeños (M2–3) vienen de EMSC; USGS casi no cataloga menos de M4 fuera de EE. UU.</p>
+        </div>
+
+        <div class="settings-card">
+          <h3>Ubicación</h3>
+          <p class="estado-ubicacion" id="ubicacion-estado-texto">No solicitada.</p>
+          <button class="btn btn-secundario" id="btn-pedir-ubicacion" type="button">Usar mi ubicación exacta</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>Zona de interés</h3>
+          <label class="radio-option"><input type="radio" name="zona-ajustes" value="cerca" /> Cerca de mí</label>
+          <label class="radio-option"><input type="radio" name="zona-ajustes" value="peru" checked /> Perú</label>
+          <label class="radio-option"><input type="radio" name="zona-ajustes" value="andina" /> Región andina</label>
+          <label class="radio-option"><input type="radio" name="zona-ajustes" value="mundo" /> Todo el mundo</label>
+
+          <div class="range-row" id="radio-km-row" hidden style="margin-top:12px;">
+            <input type="range" id="radio-km-range" min="50" max="2000" step="50" value="500" />
+            <span class="range-value" id="radio-km-valor">500 km</span>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3>Notificaciones</h3>
+          <div class="toggle-row">
+            <span>Avisos mientras la app está abierta</span>
+            <label class="switch">
+              <input type="checkbox" id="toggle-notificaciones" />
+              <span class="track"></span>
+            </label>
+          </div>
+          <p class="nota" style="margin-top:8px; font-size:0.75rem;">Con la app abierta revisa cada 2 minutos si hay sismos nuevos que superen tu umbral en tu zona.</p>
+          <button class="btn btn-secundario" id="btn-probar-alerta" type="button" style="margin-top:12px;">Probar alerta</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>Instalar app</h3>
+          <p class="estado-ubicacion" id="instalar-estado-texto">Instálala como una app más, con su propio ícono y sin pasar por ninguna tienda.</p>
+          <button class="btn btn-secundario" id="btn-instalar-ajustes" type="button">Instalar Alerta Andina</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>De dónde vienen los datos</h3>
+          <p class="nota">
+            Los datos provienen del Servicio Geológico de EE.UU. (USGS) y del Centro Sismológico Euro-Mediterráneo (EMSC), ambos de acceso público y abierto; los sismos pequeños de Perú vienen de EMSC. El IGP (Perú) es la autoridad oficial, pero no publica una API abierta — por eso esta app usa estas fuentes, de forma transparente. No es un sistema oficial de alerta.
+          </p>
+        </div>
+      </div>
+
+      <div class="section-title mt-4"><span>Sismos guardados</span></div>
+      <div class="quakes-grid" id="favoritos-grid"></div>
+    </main>
+
+    <!-- ---------- VISTA: MI PLAN (reemplaza a "Seguridad") ----------
+         Todo se guarda solo en este dispositivo (localStorage), sin cuenta.
+         Lógica en js/plan.js. -->
+    <main class="view" id="view-plan" data-view="plan" hidden>
+      <header class="plan-cabecera">
+        <div>
+          <p class="plan-eyebrow">Mi plan</p>
+          <h1 class="plan-titulo">Tu plan ante un sismo</h1>
+        </div>
+        <div class="plan-acciones">
+          <label class="plan-pais">
+            <span class="visually-hidden">País</span>
+            <select id="plan-pais" aria-label="País para los teléfonos y la lista recomendada">
+              <option value="PE">País: Perú</option>
+              <option value="BO">País: Bolivia</option>
+              <option value="CL">País: Chile</option>
+              <option value="CO">País: Colombia</option>
+              <option value="EC">País: Ecuador</option>
+              <option value="XX">Otro país</option>
+            </select>
+          </label>
+          <span class="plan-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V8a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8"/></svg>Solo en este dispositivo · sin cuenta</span>
+        </div>
+      </header>
+
+      <section class="plan-grid">
+        <div class="plan-col">
+          <article class="plan-card plan-estado">
+            <div class="mag-ring mag-ring--plan" id="plan-anillo" style="--pct:0" data-nivel="leve" role="img" aria-label="Pasos completados">
+              <span class="mag-ring-centro"><span class="mag-ring-num" id="plan-pasos">0/3</span><span class="mag-ring-label">listo</span></span>
+            </div>
+            <ul class="plan-pasos">
+              <li id="paso-contactos"><span class="paso-ico"></span><span><strong>1 · Contactos</strong> · <span class="paso-det"></span></span></li>
+              <li id="paso-mochila"><span class="paso-ico"></span><span><strong>2 · Mochila</strong> · <span class="paso-det"></span></span></li>
+              <li id="paso-direccion"><span class="paso-ico"></span><span><strong>3 · Dirección de emergencia</strong> · <span class="paso-det"></span></span></li>
+            </ul>
+          </article>
+
+          <article class="plan-card plan-mochila">
+            <div class="mochila-cab">
+              <div class="mochila-titulo">
+                <h2>Mochila viva</h2>
+                <button type="button" class="btn-info" id="mochila-info" aria-haspopup="dialog">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg>¿Qué es?
+                </button>
+              </div>
+              <span class="mochila-cuenta" id="mochila-cuenta">0 de 0 listas</span>
+            </div>
+            <div class="mochila-barra" role="img" id="mochila-barra-wrap" aria-label="Progreso de la mochila"><div id="mochila-barra"></div></div>
+            <p class="mochila-fuente" id="mochila-fuente"></p>
+            <div class="mochila-vencen" id="mochila-vencen" hidden>
+              <span class="punto-rojo" aria-hidden="true"></span>
+              <strong>Vencen pronto:</strong>
+              <span id="mochila-vencen-lista"></span>
+              <button type="button" id="mochila-calendario">Recordármelo en el calendario</button>
+            </div>
+            <div class="mochila-grupos" id="mochila-grupos"></div>
+            <div class="mochila-otros">
+              <div class="mochila-otros-cab"><h3>Otros · lo que añades tú</h3><span id="otros-cuenta"></span></div>
+              <ul class="mochila-otros-lista" id="otros-lista"></ul>
+              <form class="mochila-anadir" id="otros-form">
+                <div><label for="otros-texto">Qué añadir</label><input id="otros-texto" type="text" maxlength="60" placeholder="Ej. llaves de repuesto" required /></div>
+                <div><label for="otros-vence">Fecha de vencimiento <span>(opcional)</span></label><input id="otros-vence" type="date" /></div>
+                <button type="submit">Añadir</button>
+              </form>
+            </div>
+            <div class="mochila-pie">
+              <button class="plan-borrar" id="mochila-vaciar" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Vaciar mochila</button>
+              <div class="plan-confirmar" id="plan-confirmar" role="alertdialog" aria-labelledby="plan-confirmar-texto" hidden>
+                <p id="plan-confirmar-texto">¿Vaciar la mochila? Se quitan las marcas, las fechas de vencimiento y lo que añadiste en "Otros". Tus contactos, tu mensaje y tu dirección se quedan como están.</p>
+                <div><button class="btn btn-secundario" id="plan-borrar-no" type="button">Cancelar</button><button class="plan-borrar-si" id="plan-borrar-si" type="button">Sí, vaciar</button></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <article class="plan-card plan-contactos">
+          <div class="contactos-cab"><h2>A quién avisar</h2><span id="contactos-cuenta">0 de 3</span></div>
+          <ul class="contactos-lista" id="contactos-lista"></ul>
+          <button class="contactos-abrir" id="contactos-abrir" type="button">+ Añadir contacto (máx. 3)</button>
+          <form class="contactos-form" id="contactos-form" hidden>
+            <div><label for="contacto-nombre">Nombre</label><input id="contacto-nombre" type="text" maxlength="30" required placeholder="Ej. Mamá" /></div>
+            <div><label for="contacto-tel">Teléfono con prefijo</label><input id="contacto-tel" type="tel" maxlength="20" required placeholder="+51 987 654 321" /></div>
+            <button type="submit">Añadir</button>
+          </form>
+          <label for="plan-mensaje" class="contactos-label">Tu mensaje "Estoy bien"</label>
+          <textarea id="plan-mensaje" rows="3" maxlength="300"></textarea>
+          <button class="btn-estoy-bien" id="plan-avisar" type="button">Avisar que estoy bien</button>
+          <p class="contactos-nota">Se envía por SMS porque, después de un sismo, internet suele fallar, pero los mensajes de texto casi siempre llegan. El botón abre tus SMS con el mensaje, la hora y tus contactos; tú solo pulsas enviar. Si tu móvil añade solo a una persona, avisa al resto desde su fila.</p>
+        </article>
+      </section>
+
+      <section class="plan-emergencia" aria-labelledby="plan-emergencia-titulo">
+        <div>
+          <p class="plan-emergencia-eyebrow">Si no puedes salir o necesitas ayuda</p>
+          <h2 id="plan-emergencia-titulo">Modo emergencia</h2>
+          <p>Silbato agudo en bucle y tu dirección dicha en voz alta, para que te encuentren. También se abre desde el botón SOS y desde cualquier alerta.</p>
+          <div class="plan-emergencia-botones">
+            <button type="button" class="btn-blanco" data-abrir-emergencia>Abrir modo emergencia</button>
+            <button type="button" class="btn-borde" id="plan-probar-silbato"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a5 5 0 005 5h3l6 4V3l-6 4H8a5 5 0 00-5 5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Probar el silbato</button>
+          </div>
+          <p class="plan-emergencia-nota">Pruébalo ahora con tu volumen: una web no puede subir el volumen del móvil sola.</p>
+        </div>
+        <div class="plan-direccion">
+          <label for="plan-direccion">Dirección de emergencia (normalmente tu casa)</label>
+          <input id="plan-direccion" type="text" maxlength="120" placeholder="Ej. Jr. Las Flores 245, Comas, Lima" />
+          <p>La voz del móvil la dirá en voz alta. Si el sismo te pilla en otro sitio, la cambias al abrir SOS.</p>
+        </div>
+      </section>
+
+      <section class="plan-telefonos" id="plan-telefonos" aria-label="Teléfonos de emergencia"></section>
+    </main>
+
+    <!-- ---------- MODAL: ¿Qué es la mochila? ---------- -->
+    <dialog class="plan-dialogo" id="dialogo-mochila" aria-labelledby="dlg-mochila-titulo">
+      <button type="button" class="dialogo-x" data-cerrar aria-label="Cerrar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <img class="dialogo-img" src="img/mochila-emergencia.svg" alt="Mochila de emergencia con agua, linterna, botiquín, radio y silbato" width="520" height="240" />
+      <div class="dialogo-cuerpo">
+        <h2 id="dlg-mochila-titulo">¿Qué es la mochila para emergencias?</h2>
+        <p>Es una mochila con lo indispensable para <strong>sobrevivir las primeras 24 horas</strong> después de un sismo. Es la que te llevas cuando evacúas.</p>
+        <ul class="dialogo-puntos">
+          <li><strong>Dónde:</strong> cerca de la puerta de salida, a mano. No al fondo de un armario.</li>
+          <li><strong>Para quién:</strong> adáptala a tu familia: bebés, personas mayores, mascotas, medicinas.</li>
+          <li><strong>Por qué "viva":</strong> el agua, la comida, las pilas y las medicinas caducan. Aquí apuntas las fechas y te avisamos.</li>
+          <li><strong>Y después:</strong> la caja de reserva cubre del 2.º al 4.º día y se guarda en un lugar seguro (patio, jardín o coche).</li>
+        </ul>
+        <p class="dialogo-fuente">Fuente: INDECI · Combo de supervivencia.</p>
+        <button type="button" class="btn-estoy-bien" data-cerrar>Entendido</button>
+      </div>
+    </dialog>
+
+    <!-- ---------- MODAL: Recordatorio en el calendario ---------- -->
+    <dialog class="plan-dialogo plan-dialogo--chico" id="dialogo-calendario" aria-labelledby="dlg-cal-titulo">
+      <button type="button" class="dialogo-x" data-cerrar aria-label="Cerrar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="dialogo-cuerpo">
+        <h2 id="dlg-cal-titulo">Recordármelo en el calendario</h2>
+        <p>Un aviso una semana antes de que venza cada cosa. Elige tu calendario:</p>
+        <ul class="calendario-lista" id="calendario-lista"></ul>
+        <button type="button" class="btn-borde-oscuro" id="calendario-ics">Apple Calendar u Outlook (.ics)</button>
+        <p class="dialogo-fuente" id="calendario-ics-nota" hidden>Se ha descargado "recordatorio-mochila.ics". Ábrelo y tu calendario te preguntará si quieres añadir los avisos.</p>
+      </div>
+    </dialog>
+    <!-- ---------- VISTA: DETALLE DEL SISMO (página completa, #sismo/<id>) ---------- -->
+    <main class="view" id="view-sismo" data-view="sismo" hidden>
+      <div class="sismo-barra">
+        <button class="btn-volver" id="sismo-volver" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Volver
+        </button>
+        <button class="btn-seguir" id="sismo-seguir" type="button" aria-pressed="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 18 4.5V21l-6-3.75L6 21V4.5z"/></svg>
+          <span id="sismo-seguir-texto">Seguir</span>
+        </button>
+      </div>
+
+      <div class="sismo-vacio" id="sismo-vacio" hidden>
+        <p id="sismo-vacio-texto">Cargando sismo…</p>
+      </div>
+
+      <div id="sismo-contenido">
+        <div class="sheet-cabecera">
+          <div class="mag-ring mag-ring--sheet sheet-mag-badge" id="sheet-mag-badge" data-nivel="leve" style="--pct:0"><span class="mag-ring-centro"><span class="mag-ring-num">—</span></span></div>
+          <div class="sheet-cab-texto">
+            <p class="sheet-eyebrow">Sismo registrado</p>
+            <h2 class="sheet-place" id="sheet-place">—</h2>
+            <p class="sheet-fecha" id="sheet-time">—</p>
+          </div>
+        </div>
+
+        <div class="sheet-tabs" role="tablist" aria-label="Información del sismo">
+          <button class="sheet-tab is-active" data-tab="detalle" role="tab" aria-selected="true" type="button">Detalle</button>
+          <button class="sheet-tab" data-tab="actividad" role="tab" aria-selected="false" type="button">Actividad<span class="solo-ancho"> en la zona</span></button>
+          <button class="sheet-tab" data-tab="noticias" role="tab" aria-selected="false" type="button">Noticias</button>
+        </div>
+
+        <!-- Detalle: datos + mapa del epicentro -->
+        <section class="sheet-panel" data-panel="detalle">
+          <div class="detalle-cols">
+            <div class="sheet-map" id="mapa-leaflet-sheet"></div>
+            <div class="detalle-datos">
+              <div class="sheet-grid">
+        <div class="sheet-item">
+          <span class="sheet-item-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <span class="sheet-item-texto">
+            <span class="sheet-item-label">Cuándo</span>
+            <span class="sheet-item-value" id="sheet-cuando">—</span>
+          </span>
+        </div>
+        <div class="sheet-item">
+          <span class="sheet-item-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v13m0 0l-5-5m5 5l5-5"/><path d="M5 21h14"/></svg></span>
+          <span class="sheet-item-texto">
+            <span class="sheet-item-label">Profundidad</span>
+            <span class="sheet-item-value" id="sheet-depth">—</span>
+          </span>
+        </div>
+        <div class="sheet-item">
+          <span class="sheet-item-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+          <span class="sheet-item-texto">
+            <span class="sheet-item-label">Magnitud</span>
+            <span class="sheet-item-value" id="sheet-mag">—</span>
+          </span>
+        </div>
+        <div class="sheet-item">
+          <span class="sheet-item-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
+          <span class="sheet-item-texto">
+            <span class="sheet-item-label">Epicentro</span>
+            <span class="sheet-item-value" id="sheet-epicentro">—</span>
+          </span>
+        </div>
+        <div class="sheet-item">
+          <span class="sheet-item-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
+          <span class="sheet-item-texto">
+            <span class="sheet-item-label">Fuente</span>
+            <span class="sheet-item-value" id="sheet-fuente">USGS</span>
+          </span>
+        </div>
+        <div class="sheet-item">
+          <span class="sheet-item-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg></span>
+          <span class="sheet-item-texto">
+            <span class="sheet-item-label">Estado</span>
+            <span class="sheet-item-value" id="sheet-status">—</span>
+          </span>
+        </div>
+              </div>
+              <p class="sheet-disclaimer">Aviso informativo de monitoreo sísmico (datos de USGS y EMSC) — no es una alerta oficial de emergencia.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actividad en la zona: sismos cercanos antes y después, con repetición -->
+        <section class="sheet-panel" data-panel="actividad" hidden>
+          <div class="act-cols">
+            <div class="act-mapa" id="mapa-leaflet-actividad"></div>
+            <div class="act-info">
+              <p class="eyebrow-mini">A menos de <span id="act-radio">100</span> km del epicentro</p>
+              <h3 class="panel-titulo" id="act-titulo">—</h3>
+              <div class="act-stats">
+                <div class="stat"><span class="stat-valor" id="act-antes">—</span><span class="stat-label">antes</span></div>
+                <div class="stat"><span class="stat-valor" id="act-despues">—</span><span class="stat-label">después</span></div>
+                <div class="stat"><span class="stat-valor" id="act-replicas">—</span><span class="stat-label">posibles réplicas</span></div>
+              </div>
+              <p class="panel-texto">Las <strong>posibles réplicas</strong> son sismos más pequeños que ocurrieron después y cerca de este. La app no puede confirmar que lo sean: es una pista, no un diagnóstico.</p>
+              <p class="sheet-disclaimer" id="act-ventana"></p>
+            </div>
+          </div>
+
+          <div class="act-linea">
+            <div class="act-linea-cab">
+              <span>Sismos por día en la zona</span>
+              <span class="act-hasta" id="act-hasta">Hoy</span>
+            </div>
+            <div class="act-barras" id="act-barras" aria-hidden="true"></div>
+            <div class="act-control">
+              <button class="act-play" id="act-play" type="button" aria-label="Reproducir los últimos días">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path class="ico-play" d="M8 5v14l11-7z"/><path class="ico-pausa" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+              </button>
+              <input type="range" id="act-rango" min="0" max="30" value="30" aria-label="Día que se muestra en el mapa" />
+            </div>
+            <div class="act-marcas" id="act-marcas"><span>Hace 30 d</span><span>Hoy</span></div>
+          </div>
+        </section>
+
+        <!-- Noticias -->
+        <section class="sheet-panel" data-panel="noticias" hidden>
+          <div id="noticias-contenido" aria-live="polite"></div>
+          <a class="noticias-ver-todo" id="noticias-google" href="#" target="_blank" rel="noopener noreferrer">Ver todo en Google News ↗</a>
+          <p class="sheet-disclaimer"><span id="noticias-fuente">Titulares de Google News sobre este sismo</span>; los enlaces llevan a medios externos y no son una fuente oficial.</p>
+        </section>
+      </div>
+    </main>
+    </div><!-- /.app-content -->
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="alertas">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h4l3 8 4-16 3 8h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Alertas
+      </button>
+      <button class="nav-item" data-view="mapa">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 4l6 2 5-2v15l-5 2-6-2-5 2V6l5-2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        Mapa
+      </button>
+      <button class="nav-item" data-view="plan">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Mi Plan
+      </button>
+      <button class="nav-item" data-view="ajustes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.67 4.14a2.34 2.34 0 0 1 4.66 0 2.34 2.34 0 0 0 3.32 1.91 2.34 2.34 0 0 1 2.33 4.04 2.34 2.34 0 0 0 0 3.82 2.34 2.34 0 0 1-2.33 4.04 2.34 2.34 0 0 0-3.32 1.91 2.34 2.34 0 0 1-4.66 0 2.34 2.34 0 0 0-3.32-1.91 2.34 2.34 0 0 1-2.33-4.04 2.34 2.34 0 0 0 0-3.82 2.34 2.34 0 0 1 2.33-4.04 2.34 2.34 0 0 0 3.32-1.91z"/><circle cx="12" cy="12" r="3"/></svg>
+        Ajustes
+      </button>
+    </nav>
+    <button class="sos-flotante" type="button" data-abrir-emergencia aria-label="Abrir modo emergencia">SOS</button>
+  </div>
+
+
+  <!-- ===================== MODO EMERGENCIA (SOS) ===================== -->
+  <div class="emergencia" id="emergencia" role="dialog" aria-modal="true" aria-labelledby="emergencia-titulo" hidden>
+    <div class="emergencia-panel" id="emergencia-panel">
+      <header class="emergencia-cab">
+        <h1 id="emergencia-titulo">Modo emergencia</h1>
+        <button class="emergencia-cerrar" id="emergencia-cerrar" type="button" aria-label="Salir del modo emergencia"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      </header>
+      <div class="emergencia-aviso">
+        <svg width="34" height="46" viewBox="0 0 34 46" role="img" aria-label="Móvil con el botón de subir volumen señalado"><rect x="6" y="2" width="22" height="42" rx="4" fill="none" stroke="#FFFFFF" stroke-width="2"/><rect x="1" y="10" width="4" height="8" rx="1.5" fill="#FFC300"/><rect x="1" y="20" width="4" height="8" rx="1.5" fill="#FFFFFF" opacity="0.5"/></svg>
+        <span><strong>Sube el volumen al máximo</strong>¿Auriculares conectados? Desconéctalos para que suene el altavoz.</span>
+      </div>
+      <button class="emergencia-btn" id="btn-silbato" type="button">
+        <span class="emergencia-ico rojo"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a5 5 0 005 5h3l6 4V3l-6 4H8a5 5 0 00-5 5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+        <span><strong>Sonar silbato</strong><small>Pitido agudo, 3 veces y pausa, sin parar</small></span>
+      </button>
+      <button class="emergencia-btn azul" id="btn-voz" type="button">
+        <span class="emergencia-ico azul"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg></span>
+        <span><strong>Decir dónde estoy</strong><small>"Necesito ayuda. Estoy…" en bucle</small></span>
+      </button>
+      <div class="emergencia-donde">
+        <label for="emergencia-donde">Estoy…</label>
+        <input id="emergencia-donde" type="text" maxlength="160" placeholder="en casa, atrapada en el baño, en el 2.º piso…" />
+        <div><button type="button" id="donde-casa">Mi casa</button><button type="button" id="donde-gps">Usar mi ubicación GPS</button></div>
+        <p id="emergencia-donde-nota">¿Te pilló en otro sitio? Escríbelo aquí o usa el GPS: es lo que dirá la voz.</p>
+      </div>
+      <button class="emergencia-bien" id="emergencia-bien" type="button">Estoy bien · avisar a mi familia</button>
+    </div>
+
+    <div class="emergencia-sonando" id="emergencia-sonando" hidden>
+      <header class="emergencia-cab"><span class="sonando-etiqueta" id="sonando-etiqueta">Silbato sonando</span><span class="sonando-pantalla">Pantalla encendida</span></header>
+      <div class="sonando-centro">
+        <div class="sonando-ondas" aria-hidden="true"><span></span><span></span><span></span><b><svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a5 5 0 005 5h3l6 4V3l-6 4H8a5 5 0 00-5 5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></b></div>
+        <div class="sonando-patron" id="sonando-patron" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <p class="sonando-texto" id="sonando-texto">3 pitidos y pausa: la señal internacional de auxilio. Suena hasta que la detengas.</p>
+        <p class="sonando-nota">Ahorra batería: si oyes a alguien, detén el silbato y grita o usa "Decir dónde estoy".</p>
+      </div>
+      <button class="sonando-detener" id="sonando-detener" type="button">Detener</button>
+      <button class="sonando-alternar" id="sonando-alternar" type="button">Alternar con "Decir dónde estoy"</button>
+    </div>
+  </div>
+
+  <!-- ===================== ALERTA (real o de prueba) ===================== -->
+  <div class="alerta-overlay" id="alerta-overlay" role="alertdialog" aria-modal="true" aria-labelledby="alerta-lugar" hidden>
+    <div class="alerta-caja">
+      <p class="alerta-etiqueta" id="alerta-etiqueta">Sismo detectado</p>
+      <p class="alerta-accion">Si todavía tiembla: agáchate, cúbrete y sujétate</p>
+      <p class="alerta-mag" id="alerta-mag">—</p>
+      <h2 class="alerta-lugar" id="alerta-lugar">—</h2>
+      <p class="alerta-meta" id="alerta-meta"></p>
+      <p class="alerta-consejo">Si ya pasó: revisa a tu familia y prepárate para réplicas. En la costa, si fue fuerte o largo, aléjate hacia zona alta sin esperar aviso.</p>
+      <p class="alerta-aviso">Aviso de redes sísmicas (USGS · EMSC), puede llegar minutos después del sismo. No es una alerta temprana oficial.</p>
+      <button class="alerta-btn" id="alerta-entendido" type="button">Entendido</button>
+      <button class="alerta-link" id="alerta-ver" type="button">Ver detalle del sismo</button>
+      <button class="alerta-ayuda" type="button" data-abrir-emergencia>Necesito ayuda · SOS</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="js/lugares.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/favorites.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/geo.js"></script>
+  <script src="js/map.js"></script>
+  <!-- Vue + código vanilla aún no migrado (app.js, plan.js): ver src/main.js -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
